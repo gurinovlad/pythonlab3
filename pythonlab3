@@ -1,12 +1,14 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.express as px
 
 df_init = pd.DataFrame({
     'имя': ['Сургутская ГРЭС-2', 'Рефтинская ГРЭС', 'Костромская ГРЭС'],
     'мощность': [5.6, 3.8, 3.6],
     'компания': ['Э.Он Россия', 'Энел Россия', 'Интер РАО']
 })
+
 print("--- 2. Вывод df_init.head() ---")
 print(df_init.head())
 print()
@@ -16,7 +18,7 @@ df_exted = pd.concat([
     pd.DataFrame({
         'имя': [
             'Сургутская ГРЭС-1', 'Рязанская ГРЭС', 'Киришская ГРЭС', 
-            'Конаковская ГРЭС', 'Ириклинская ГРЭС', 'Пермская ГРЭС', 'Ставропольская ГРЭС'
+            'Кonaковская ГРЭС', 'Ириклинская ГРЭС', 'Пермская ГРЭС', 'Ставропольская ГРЭС'
         ],
         'мощность': [3.3, 3.3, 2.6, 2.5, 2.4, 2.4, 2.4],
         'компания': [
@@ -26,128 +28,85 @@ df_exted = pd.concat([
     })
 ], ignore_index=True)
 
-print("--- 3. Полная таблица df_exted ---")
-print(df_exted)
-print()
-print('имена столбцов:', df_exted.columns.values)
-print()
-
 df_exted.insert(0, 'id', ['s2', 'rf', 'ks', 's1', 'rz', 'kr', 'kn', 'ir', 'pr', 'st'])
-print("--- 4. Таблица с добавленным столбцом id ---")
-print(df_exted)
-print()
-
 df_exted = df_exted.set_index('id')
-print("--- Таблица после set_index('id') ---")
+
+print("--- Исходная объединенная таблица df_exted ---")
 print(df_exted)
-print()
+print("-" * 80 + "\n")
 
+df_exted = df_exted.sort_values(['мощность'], ascending=False)
 
-
-print("--- 5. Сортировка по имени ---")
-df_exted = df_exted.sort_values(['имя'])
+print("--- 4.1. Сортировка по убыванию установленной мощности ---")
 print(df_exted)
-print()
+print("-" * 80 + "\n")
 
-print("--- Сортировка по мощности (по возрастанию) ---")
-df_exted = df_exted.sort_values(['мощность'], ascending=True)
-print(df_exted)
-print()
+df_exted['выработка_за_сутки'] = df_exted['мощность'] * 24
 
-df_exted_2 = df_exted.copy()
+df_exted['тип'] = np.where(df_exted['имя'].str.find('ГРЭС') >= 0, 'ГРЭС', 'ТЭС')
 
-df_exted_2['выработка_за_сутки'] = df_exted_2['мощность'] * 24
-
-df_exted_2['тип'] = np.where(
-    df_exted_2['имя'].str.find('ГРЭС') >= 0, 'ТЭС',
-    np.where(df_exted_2['имя'].str.find('ТЭЦ') >= 0, 'ТЭЦ', '?')
-)
-
-df_exted_2['проверка_расчетов'] = df_exted_2['выработка_за_сутки'] / df_exted_2['мощность'] == 24
-print("--- 6. Вычисления и добавление столбцов (выработка, тип, проверка) ---")
-print(df_exted_2)
-print()
+print("--- 4.2. Добавление столбцов выработки и типа станции ---")
+print(df_exted.head())
+print("-" * 80 + "\n")
 
 
+print("--- 4.3. Выборка по условию (мощность > 3.0 и компания != 'Энел Россия') ---")
+df_filtered = df_exted[(df_exted.мощность > 3.0) & (df_exted.компания != 'Энел Россия')]
+print(df_filtered)
+print("-" * 80 + "\n")
 
-print("--- 7.1. Через имя столбцов ---")
-print(df_exted_2[['имя', 'мощность']])
-print()
+print("--- 4.4. Выбор фрагмента через iloc (строки 0:4, столбцы 0:3) ---")
+df_fragment = df_exted.iloc[0:4, 0:3]
+print(df_fragment)
+print("-" * 80 + "\n")
 
-print("--- 7.2. Через loc по именам строк (индексам id) и столбцов ---")
-print(df_exted_2.loc[['s2', 'rf'], ['имя', 'мощность']])
-print()
-
-print("--- 7.3. Через iloc по номерам строк и столбцов ---")
-print("Данные из первой строки и второго столбца:")
-print(df_exted_2.iloc[0, 1])
-print()
-print("Данные из всех строк кроме двух последних, столбцы со 2-го по 4-й:")
-print(df_exted_2.iloc[:-2, 1:4])
-print()
-
-df_exted = df_exted_2.drop(['проверка_расчетов'], axis='columns')
-
-print("--- 9. Выбрать станции с мощностью выше 3.0 ГВт ---")
-print(df_exted[df_exted.мощность > 3.0])
-print()
-
-print("--- Выбрать станции с мощностью выше 2.5 ГВт и не от компании 'Энел Россия' ---")
-print(df_exted[(df_exted.мощность > 2.5) & (df_exted.компания != 'Энел Россия')])
-print()
+print("--- 4.5. Расчет статистики по компаниям-владельцам ---")
+company_stats = df_exted.groupby(['компания'])['мощность'].agg(['sum', 'mean', 'count'])
+company_stats.columns = ['Суммарная_мощность', 'Средняя_мощность', 'Количество_станций']
+print(company_stats)
+print("-" * 80 + "\n")
 
 
-
-print("--- 10. Суммарная мощность по типам электростанций ---")
-print(df_exted.groupby(['тип'])['мощность'].sum())
-print()
-
-print("--- Число станций по мощности ниже и выше 3.0 ГВт с разделением по компаниям ---")
-print(df_exted.groupby(['компания', df_exted['мощность'] > 3.0])['мощность'].count())
-print()
-
-print("--- 11-13. Генерация стандартных графиков Matplotlib ---")
-df_exted['мощность'].plot(kind='bar', title='Мощность станций (ГВт)', color='darkorange')
-plt.ylabel('ГВт')
+print("--- 4.6. Визуализация: Статическая гистограмма мощностей ТЭС ---")
+plt.figure(figsize=(10, 4))
+df_exted['мощность'].plot(kind='bar', color='chocolate', edgecolor='black')
+plt.title('Мощность крупнейших тепловых электростанций России')
+plt.xlabel('Идентификатор ТЭС (id)')
+plt.ylabel('Мощность, ГВт')
+plt.grid(axis='y', linestyle=':', alpha=0.6)
 plt.tight_layout()
 plt.show()
 print()
 
-df_exted.groupby(['компания'])['мощность'].sum().plot(kind='barh', title='Суммарная мощность по компаниям', color='teal')
-plt.xlabel('ГВт')
+print("--- 4.7. Визуализация: Круговая диаграмма распределения долей ---")
+plt.figure(figsize=(6, 6))
+shares = df_exted.groupby(['компания'])['мощность'].sum()
+shares.plot(kind='pie', autopct='%1.1f%%', startangle=140, 
+            colors=['#ff9999','#66b3ff','#99ff99','#ffcc99'])
+plt.title('Доля компаний в суммарной мощности Топ-10 ТЭС')
+plt.ylabel('')  # Прячем системную надпись оси у
 plt.tight_layout()
 plt.show()
 print()
 
+print("--- 4.8. Визуализация: Интерактивный график (Plotly) ---")
 
-print("--- 4.8. Построение интерактивного графика (Bokeh) ---")
-from bokeh.plotting import figure, show
-from bokeh.io import output_notebook
-from bokeh.models import ColumnDataSource
+df_interactive = df_exted.sort_values(by='мощность').reset_index(names='id')
 
-output_notebook()
-
-df_bokeh = df_exted.sort_values(by='мощность').reset_index()
-source = ColumnDataSource(df_bokeh)
-
-p = figure(
-    title="Интерактивный график: Зависимость выработки от установленной мощности",
-    x_axis_label="Установленная мощность, ГВт",
-    y_axis_label="Выработка за сутки, ГВт*ч",
-    width=800, 
-    height=400,
-    tools="pan,box_zoom,wheel_zoom,reset,hover,save"
+fig = px.line(
+    df_interactive, 
+    x='мощность', 
+    y='выработка_за_сутки',
+    title='Зависимость суточной выработки от установленной мощности электростанции',
+    labels={'мощность': 'Установленная мощность, ГВт', 'выработка_за_сутки': 'Условная выработка за сутки, ГВт*ч'},
+    hover_name='имя',               
+    hover_data=['id', 'компания'],  
+    markers=True                    
 )
 
-p.hover.tooltips = [
-    ("Идентификатор", "@id"),
-    ("Название", "@имя"),
-    ("Компания", "@компания"),
-    ("Мощность", "@мощность ГВт"),
-    ("Выработка за сутки", "@выработка_за_сутки ГВт*ч")
-]
+fig.update_traces(
+    marker=dict(size=10, color='darkblue', symbol='circle'), 
+    line=dict(color='crimson', width=3)
+)
 
-p.line(x='мощность', y='выработка_за_сутки', source=source, line_width=3, color='blue', legend_label="Линейный тренд")
-p.circle(x='мощность', y='выработка_за_сутки', source=source, size=10, color='red', alpha=0.7)
-
-show(p)
+fig.show()
